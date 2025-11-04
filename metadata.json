@@ -1,0 +1,5 @@
+{
+  "name": "RIA - Your Realest Friend",
+  "description": "A web application featuring 'RIA', an AI-powered best friend designed to provide a supportive, honest, and empathetic chat experience for users. Built with React and powered by the Gemini API.",
+  "requestFramePermissions": []
+}
