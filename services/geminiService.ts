@@ -58,9 +58,18 @@ export const getRiaResponse = async (messages: Message[]): Promise<string> => {
       },
     });
 
+    const candidate = response.candidates?.[0];
+    if (candidate?.finishReason === 'SAFETY') {
+        return "Ой, кажется, мой ответ был заблокирован фильтрами безопасности. 😬 Давай попробуем перефразировать твой вопрос или обсудить что-то другое.";
+    }
+    if (!response.text) {
+        console.error("Gemini API returned an empty response. Finish Reason:", candidate?.finishReason, "Safety Ratings:", candidate?.safetyRatings);
+        return "Прости, дорогая, что-то пошло не так, и я не могу сейчас ответить. Похоже, ответа просто нет. Давай попробуем еще раз через мгновение. 🫂";
+    }
+
     return response.text;
   } catch (error) {
-    console.error("Error fetching response from Gemini API:", error);
+    console.error("Full error object from Gemini API:", JSON.stringify(error, null, 2));
     
     if (error instanceof Error) {
         if (error.message.includes('API key not valid') || error.message.includes('permission') || error.message.includes('API key is invalid')) {
@@ -71,6 +80,6 @@ export const getRiaResponse = async (messages: Message[]): Promise<string> => {
         }
     }
     
-    return "Прости, дорогая, что-то пошло не так, и я не могу сейчас ответить. Давай попробуем еще раз через мгновение. 🫂";
+    return "Прости, дорогая, что-то пошло не так, и я не могу сейчас ответить. Возможно, наш диалог был прерван фильтрами безопасности. Давай попробуем еще раз через мгновение. 🫂";
   }
 };
