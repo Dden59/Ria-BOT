@@ -7,24 +7,47 @@ import { RIA_SYSTEM_PROMPT } from '../constants';
 let ai: GoogleGenAI | null = null;
 const apiKey = process.env.API_KEY;
 
-// A simpler, more robust function to format chat history.
-// It ensures the history starts with a user message and is correctly formatted.
+/**
+ * A robust, "bulletproof" function to format chat history.
+ * It ensures the history starts with a user message, enforces strict user/model alternation,
+ * and guarantees the final message is from the user, preventing common API errors.
+ */
 const buildHistory = (messages: Message[]) => {
-  // 1. Find the index of the first user message. History MUST start with a user message.
+  // 1. Find the first user message. History MUST start with a user.
   const firstUserIndex = messages.findIndex(msg => msg.sender === Sender.USER);
   if (firstUserIndex === -1) {
-    // If there's no user message, we can't create a valid history.
+    // If there are no user messages, we cannot construct a valid history.
     return [];
   }
-  
-  // 2. Slice the array to start from the first user message.
-  const validMessages = messages.slice(firstUserIndex);
 
-  // 3. Convert to the format required by the API.
-  const history = validMessages.map(msg => ({
-    role: msg.sender === Sender.USER ? "user" : "model",
-    parts: [{ text: msg.text }],
-  }));
+  // 2. Take only the relevant part of the conversation.
+  const relevantMessages = messages.slice(firstUserIndex);
+
+  const history = [];
+  let lastSender: Sender | null = null;
+
+  // 3. Iterate and build a clean history, enforcing alternation.
+  for (const msg of relevantMessages) {
+    // Skip consecutive messages from the same sender to enforce user/model alternation.
+    if (msg.sender === lastSender) {
+      continue;
+    }
+
+    history.push({
+      role: msg.sender === Sender.USER ? "user" : "model",
+      parts: [{ text: msg.text }],
+    });
+    lastSender = msg.sender;
+  }
+
+  // 4. CRITICAL: The API requires the last message in a multi-turn conversation
+  // to be from the 'user'. If our logic resulted in the 'model' being last,
+  // it means we're in an invalid state to make a new request.
+  if (history.length > 0 && history[history.length - 1].role !== 'user') {
+    console.error("buildHistory Error: Invalid turn order. The last message is not from the user.", history);
+    // Return empty to signal a logical error upstream.
+    return [];
+  }
 
   return history;
 };
@@ -42,10 +65,10 @@ export const getRiaResponse = async (messages: Message[]): Promise<string> => {
   }
 
   try {
-    // buildHistory now prepares the entire `contents` array.
+    // buildHistory now prepares the entire `contents` array with robust checks.
     const contents = buildHistory(messages);
 
-    // If history is empty after processing, it's an invalid state (e.g., chat only contains AI messages).
+    // If history is empty after processing, it's an invalid state (e.g., chat only contains AI messages or has a logic error).
     if (contents.length === 0) {
       return "Ой, что-то сбилось в нашем диалоге. 😵‍💫 Похоже, я говорю сама с собой. Пожалуйста, отправь сообщение, чтобы мы могли продолжить.";
     }
