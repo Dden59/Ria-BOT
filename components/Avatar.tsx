@@ -1,7 +1,8 @@
 import React from 'react';
 
-// Вы можете заменить эту ссылку на любое другое изображение для аватара Рии
-const RIA_AVATAR_URL = 'https://img.clerk.com/eyJ0eXBlIjoicHJveHkiLCJzcmMiOiJodHRwczovL2ltYWdlcy5jbGVyay5kZXYvdXBsb2FkZWQvaW1nXzJjY29sWVl2dGNVVEp6WUpUNkVwSkhIU3hWRSJ9';
+// Путь к аватару теперь указывает на локальный файл в папке public/images
+// Загрузите ваш файл 'ria-avatar.png' именно по этому пути в вашем проекте.
+const RIA_AVATAR_URL = '/images/ria-avatar.png';
 
 interface AvatarProps {
   className?: string;
