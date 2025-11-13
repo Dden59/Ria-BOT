@@ -3,9 +3,10 @@ import React from 'react';
 interface SubscriptionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubscribe: () => void;
 }
 
-export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose }) => {
+export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, onClose, onSubscribe }) => {
   if (!isOpen) return null;
 
   return (
@@ -31,7 +32,10 @@ export const SubscriptionModal: React.FC<SubscriptionModalProps> = ({ isOpen, on
             <li className="flex items-center"><span className="text-purple-500 mr-2">✓</span> Support Ri's development ❤️</li>
           </ul>
         </div>
-        <button className="w-full bg-purple-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-600 transition-transform transform hover:scale-105">
+        <button 
+          onClick={onSubscribe}
+          className="w-full bg-purple-500 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-600 transition-transform transform hover:scale-105"
+        >
           Subscribe Now - 490 RUB/month
         </button>
         <p className="text-xs text-gray-400 mt-4">
