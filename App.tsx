@@ -89,10 +89,11 @@ const App: React.FC = () => {
   }, []);
 
   const handleSendMessage = async (text: string) => {
-    if (subscription.tier === SubscriptionTier.FREE && subscription.messagesSentToday >= FREE_TIER_MESSAGE_LIMIT) {
-      setShowSubscriptionModal(true);
-      return;
-    }
+    // Temporarily disabled subscription check to focus on growth
+    // if (subscription.tier === SubscriptionTier.FREE && subscription.messagesSentToday >= FREE_TIER_MESSAGE_LIMIT) {
+    //   setShowSubscriptionModal(true);
+    //   return;
+    // }
 
     const userMessage: Message = {
       id: `msg-${Date.now()}`,

@@ -1,3 +1,9 @@
+// --- КОНФИГУРАЦИЯ БОТА ---
+// ВАЖНО: Замените 'YOUR_BOT_USERNAME_HERE' на настоящее имя вашего бота в Telegram (без символа @).
+// Это имя будет использоваться для создания пригласительных ссылок.
+// Например: export const BOT_USERNAME = 'RiaBestFriendBot';
+export const BOT_USERNAME = 'YOUR_BOT_USERNAME_HERE';
+
 export const FREE_TIER_MESSAGE_LIMIT = 3;
 
 export const RIA_SYSTEM_PROMPT = `
