@@ -7,35 +7,31 @@ import { RIA_SYSTEM_PROMPT } from '../constants';
 let ai: GoogleGenAI | null = null;
 const apiKey = process.env.API_KEY;
 
-// A robust function to format chat history correctly for the Gemini API
+// A simpler, more robust function to format chat history.
+// It ensures the history starts with a user message and is correctly formatted.
 const buildHistory = (messages: Message[]) => {
-  // Convert all messages to the API's format
-  const history = messages.map(msg => ({
+  // 1. Find the index of the first user message. History MUST start with a user message.
+  const firstUserIndex = messages.findIndex(msg => msg.sender === Sender.USER);
+  if (firstUserIndex === -1) {
+    // If there's no user message, we can't create a valid history.
+    return [];
+  }
+  
+  // 2. Slice the array to start from the first user message.
+  const validMessages = messages.slice(firstUserIndex);
+
+  // 3. Convert to the format required by the API.
+  const history = validMessages.map(msg => ({
     role: msg.sender === Sender.USER ? "user" : "model",
     parts: [{ text: msg.text }],
   }));
 
-  // Find the index of the first user message. History must start with a user.
-  const firstUserIndex = history.findIndex(h => h.role === 'user');
-
-  // If no user messages exist, the history is invalid for the API.
-  if (firstUserIndex === -1) {
-    return [];
-  }
-
-  // Slice the history to start from the first user message.
-  const slicedHistory = history.slice(firstUserIndex);
-
-  // Filter out any consecutive messages from the same role to ensure alternation.
-  const alternatingHistory = slicedHistory.filter((msg, i, arr) => {
-    return i === 0 || msg.role !== arr[i - 1].role;
-  });
-
-  return alternatingHistory;
+  return history;
 };
 
 
-export const getRiaResponse = async (userMessage: string, history: Message[]): Promise<string> => {
+// The function now takes the full message history as a single argument for reliability.
+export const getRiaResponse = async (messages: Message[]): Promise<string> => {
   // --- LAZY INITIALIZATION ---
   if (!ai) {
     if (!apiKey) {
@@ -46,11 +42,13 @@ export const getRiaResponse = async (userMessage: string, history: Message[]): P
   }
 
   try {
-    // The full content passed to the API includes the validated history and the new user message.
-    const contents = [
-      ...buildHistory(history),
-      { role: "user", parts: [{ text: userMessage }] }
-    ];
+    // buildHistory now prepares the entire `contents` array.
+    const contents = buildHistory(messages);
+
+    // If history is empty after processing, it's an invalid state (e.g., chat only contains AI messages).
+    if (contents.length === 0) {
+      return "Ой, что-то сбилось в нашем диалоге. 😵‍💫 Похоже, я говорю сама с собой. Пожалуйста, отправь сообщение, чтобы мы могли продолжить.";
+    }
     
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',

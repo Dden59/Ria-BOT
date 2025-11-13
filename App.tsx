@@ -128,9 +128,15 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     const card = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
-    const userPrompt = `Моя карта дня сегодня – «${card.name}». Расскажи, что она значит для меня, в своем стиле.`;
     
-    const interpretation = await getRiaResponse(userPrompt, messages);
+    // Create an isolated, single-message history for the card request to ensure reliability.
+    const cardRequestContext: Message[] = [{
+      id: 'temp-card-prompt',
+      text: `Моя карта дня сегодня – «${card.name}». Расскажи, что она значит для меня, в своем стиле.`,
+      sender: Sender.USER
+    }];
+    
+    const interpretation = await getRiaResponse(cardRequestContext);
 
     // Check if the response is one of the known error messages to prevent caching them.
     const isErrorResponse = interpretation.includes('что-то пошло не так') || 
@@ -175,8 +181,12 @@ const App: React.FC = () => {
       text,
       sender: Sender.USER,
     };
+    
+    // Create the new, full history in a local variable to avoid stale state issues.
+    const updatedMessages = [...messages, userMessage];
 
-    setMessages((prevMessages) => [...prevMessages, userMessage]);
+    // Update the UI immediately with the user's message.
+    setMessages(updatedMessages);
     setIsLoading(true);
 
     if (window.Telegram && window.Telegram.WebApp) {
@@ -198,8 +208,8 @@ const App: React.FC = () => {
         }
     }
     
-    // Pass the message history *before* the new user message was added.
-    const aiResponseText = await getRiaResponse(text, messages);
+    // Pass the complete, up-to-date history to the service.
+    const aiResponseText = await getRiaResponse(updatedMessages);
 
     const aiMessage: Message = {
       id: `ai-${Date.now()}`,
@@ -207,6 +217,7 @@ const App: React.FC = () => {
       sender: Sender.AI,
     };
 
+    // Update the UI with the AI's response.
     setMessages((prevMessages) => [...prevMessages, aiMessage]);
     setIsLoading(false);
   };
