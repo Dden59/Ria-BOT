@@ -2,6 +2,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Message as MessageType } from '../types';
 import { Message } from './Message';
+import { CardMessage } from './CardMessage';
 
 interface ChatWindowProps {
   messages: MessageType[];
@@ -23,7 +24,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ messages, isLoading }) =
     <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
       <div className="flex flex-col space-y-4">
         {messages.map((msg) => (
-          <Message key={msg.id} message={msg} />
+          msg.card ? <CardMessage key={msg.id} message={msg} /> : <Message key={msg.id} message={msg} />
         ))}
         {isLoading && (
           <div className="self-start flex items-center space-x-2">

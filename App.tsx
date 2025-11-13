@@ -5,7 +5,7 @@ import { MessageInput } from './components/MessageInput';
 import { SubscriptionModal } from './components/SubscriptionModal';
 import { getRiaResponse } from './services/geminiService';
 import { Message, Sender, SubscriptionStatus, SubscriptionTier } from './types';
-import { FREE_TIER_MESSAGE_LIMIT } from './constants';
+import { FREE_TIER_MESSAGE_LIMIT, TAROT_CARDS } from './constants';
 
 // Make Telegram's WebApp type available globally
 declare global {
@@ -88,6 +88,51 @@ const App: React.FC = () => {
     }
   }, []);
 
+  const handleDrawCard = async () => {
+    if (isLoading) return; // Prevent multiple requests while one is in progress
+
+    const today = getTodayDateString();
+    const storedCardJSON = localStorage.getItem('ria-card-of-the-day');
+
+    if (storedCardJSON) {
+      const storedCard = JSON.parse(storedCardJSON);
+      if (storedCard.date === today) {
+        const cardMessage: Message = {
+          id: `card-${Date.now()}`,
+          text: storedCard.interpretation,
+          sender: Sender.AI,
+          card: { name: storedCard.cardName },
+        };
+        setMessages(prev => [...prev, cardMessage]);
+        return;
+      }
+    }
+
+    setIsLoading(true);
+
+    const card = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
+    const userPrompt = `Моя карта дня сегодня – «${card.name}». Расскажи, что она значит для меня, в своем стиле.`;
+
+    const interpretation = await getRiaResponse(userPrompt, messages);
+
+    const cardMessage: Message = {
+      id: `card-${Date.now()}`,
+      text: interpretation,
+      sender: Sender.AI,
+      card: { name: card.name },
+    };
+    
+    setMessages(prev => [...prev, cardMessage]);
+    
+    localStorage.setItem('ria-card-of-the-day', JSON.stringify({
+      date: today,
+      cardName: card.name,
+      interpretation: interpretation,
+    }));
+
+    setIsLoading(false);
+  };
+
   const handleSendMessage = async (text: string) => {
     // Temporarily disabled subscription check to focus on growth
     // if (subscription.tier === SubscriptionTier.FREE && subscription.messagesSentToday >= FREE_TIER_MESSAGE_LIMIT) {
@@ -155,7 +200,7 @@ const App: React.FC = () => {
 
   return (
     <div ref={mainAppRef} className="h-screen w-screen bg-rose-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col font-sans overflow-hidden">
-      <Header />
+      <Header onDrawCard={handleDrawCard} />
       <main className="flex-1 flex flex-col overflow-hidden">
         <ChatWindow messages={messages} isLoading={isLoading} />
       </main>
