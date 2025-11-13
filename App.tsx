@@ -112,8 +112,10 @@ const App: React.FC = () => {
 
     const card = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
     const userPrompt = `Моя карта дня сегодня – «${card.name}». Расскажи, что она значит для меня, в своем стиле.`;
-
-    const interpretation = await getRiaResponse(userPrompt, messages);
+    
+    // Pass an empty array `[]` for history to start a fresh, context-free conversation for the card reading.
+    // This prevents API errors when the chat history starts with an AI message.
+    const interpretation = await getRiaResponse(userPrompt, []);
 
     const cardMessage: Message = {
       id: `card-${Date.now()}`,
