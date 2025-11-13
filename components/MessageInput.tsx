@@ -39,7 +39,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isLoa
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="Talk to Ri..."
+          placeholder="Напиши Ри..."
           rows={1}
           className="flex-1 p-3 border border-rose-200 dark:border-gray-600 rounded-2xl bg-white dark:bg-gray-800 dark:text-white focus:ring-2 focus:ring-purple-400 focus:outline-none resize-none max-h-40"
           disabled={isLoading}
@@ -48,7 +48,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({ onSendMessage, isLoa
           type="submit"
           disabled={isLoading || !text.trim()}
           className="p-3 bg-purple-500 text-white rounded-full disabled:bg-purple-300 disabled:cursor-not-allowed hover:bg-purple-600 transition-colors duration-200"
-          aria-label="Send message"
+          aria-label="Отправить сообщение"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19V5M5 12l7-7 7 7" />

@@ -148,7 +148,7 @@ const App: React.FC = () => {
         }
       });
     } else {
-      alert("Subscription is only available through the Telegram app.");
+      alert("Подписка доступна только через приложение Telegram.");
     }
   };
 
