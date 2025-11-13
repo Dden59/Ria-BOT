@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Header } from './components/Header';
 import { ChatWindow } from './components/ChatWindow';
@@ -89,7 +90,7 @@ const App: React.FC = () => {
   }, []);
 
   const handleDrawCard = async () => {
-    if (isLoading) return; // Prevent multiple requests while one is in progress
+    if (isLoading) return;
 
     const today = getTodayDateString();
     const storedCardJSON = localStorage.getItem('ria-card-of-the-day');
@@ -113,9 +114,13 @@ const App: React.FC = () => {
     const card = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
     const userPrompt = `Моя карта дня сегодня – «${card.name}». Расскажи, что она значит для меня, в своем стиле.`;
     
-    // Pass an empty array `[]` for history to start a fresh, context-free conversation for the card reading.
-    // This prevents API errors when the chat history starts with an AI message.
     const interpretation = await getRiaResponse(userPrompt, []);
+
+    // Check if the response is one of the known error messages to prevent caching them.
+    const isErrorResponse = interpretation.includes('что-то пошло не так') || 
+                            interpretation.includes('технические неполадки') ||
+                            interpretation.includes('ключ, что ты добавил') ||
+                            interpretation.includes('сбилось в нашем диалоге');
 
     const cardMessage: Message = {
       id: `card-${Date.now()}`,
@@ -126,11 +131,14 @@ const App: React.FC = () => {
     
     setMessages(prev => [...prev, cardMessage]);
     
-    localStorage.setItem('ria-card-of-the-day', JSON.stringify({
-      date: today,
-      cardName: card.name,
-      interpretation: interpretation,
-    }));
+    // Only cache the interpretation if the API call was successful.
+    if (!isErrorResponse) {
+      localStorage.setItem('ria-card-of-the-day', JSON.stringify({
+        date: today,
+        cardName: card.name,
+        interpretation: interpretation,
+      }));
+    }
 
     setIsLoading(false);
   };
@@ -165,8 +173,9 @@ const App: React.FC = () => {
         setSubscription(newSub);
         localStorage.setItem('ria-subscription-status', JSON.stringify(newSub));
     }
-
-    const aiResponseText = await getRiaResponse(text, messages);
+    
+    const currentHistory = [...messages, userMessage];
+    const aiResponseText = await getRiaResponse(text, currentHistory);
 
     const aiMessage: Message = {
       id: `ai-${Date.now()}`,
