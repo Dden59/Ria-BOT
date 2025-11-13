@@ -9,36 +9,31 @@ const apiKey = process.env.API_KEY;
 
 // A robust function to format chat history correctly for the Gemini API
 const buildHistory = (messages: Message[]) => {
-  // The API requires a history that alternates between 'user' and 'model' roles.
-  // We must find the first user message and build a valid, alternating sequence from there.
-  const validMessages: Message[] = [];
-  let expectedSender = Sender.USER;
+  // Convert all messages to the API's format
+  const history = messages.map(msg => ({
+    role: msg.sender === Sender.USER ? "user" : "model",
+    parts: [{ text: msg.text }],
+  }));
 
-  // Find the index of the very first message sent by the user.
-  const firstUserIndex = messages.findIndex(m => m.sender === Sender.USER);
+  // Find the index of the first user message. History must start with a user.
+  const firstUserIndex = history.findIndex(h => h.role === 'user');
 
-  // If no user message exists, the history for the API is empty.
+  // If no user messages exist, the history is invalid for the API.
   if (firstUserIndex === -1) {
     return [];
   }
 
-  // Iterate from the first user message to the end of the array.
-  for (let i = firstUserIndex; i < messages.length; i++) {
-    const message = messages[i];
-    // Add the message to our valid list only if it's the one we expect.
-    if (message.sender === expectedSender) {
-      validMessages.push(message);
-      // Flip the expected sender for the next turn.
-      expectedSender = expectedSender === Sender.USER ? Sender.AI : Sender.USER;
-    }
-  }
+  // Slice the history to start from the first user message.
+  const slicedHistory = history.slice(firstUserIndex);
 
-  // Convert the valid messages to the format the API requires.
-  return validMessages.map(msg => ({
-    role: msg.sender === Sender.USER ? "user" : "model",
-    parts: [{ text: msg.text }],
-  }));
+  // Filter out any consecutive messages from the same role to ensure alternation.
+  const alternatingHistory = slicedHistory.filter((msg, i, arr) => {
+    return i === 0 || msg.role !== arr[i - 1].role;
+  });
+
+  return alternatingHistory;
 };
+
 
 export const getRiaResponse = async (userMessage: string, history: Message[]): Promise<string> => {
   // --- LAZY INITIALIZATION ---

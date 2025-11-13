@@ -85,7 +85,11 @@ const App: React.FC = () => {
         localStorage.setItem('ria-subscription-status', JSON.stringify(initialSub));
       }
     } catch (error) {
-      console.error("Failed to manage subscription state:", error);
+      console.error("Failed to manage subscription state from localStorage:", error);
+       // Fallback to initial state if localStorage fails
+       const today = getTodayDateString();
+       const initialSub = { tier: SubscriptionTier.FREE, messagesSentToday: 0, date: today };
+       setSubscription(initialSub);
     }
   }, []);
 
@@ -93,20 +97,26 @@ const App: React.FC = () => {
     if (isLoading) return;
 
     const today = getTodayDateString();
-    const storedCardJSON = localStorage.getItem('ria-card-of-the-day');
+    let storedCard = null;
 
-    if (storedCardJSON) {
-      const storedCard = JSON.parse(storedCardJSON);
-      if (storedCard.date === today) {
-        const cardMessage: Message = {
-          id: `card-${Date.now()}`,
-          text: storedCard.interpretation,
-          sender: Sender.AI,
-          card: { name: storedCard.cardName },
-        };
-        setMessages(prev => [...prev, cardMessage]);
-        return;
+    try {
+      const storedCardJSON = localStorage.getItem('ria-card-of-the-day');
+      if (storedCardJSON) {
+        storedCard = JSON.parse(storedCardJSON);
       }
+    } catch (error) {
+      console.warn("Could not read 'ria-card-of-the-day' from localStorage:", error);
+    }
+
+    if (storedCard && storedCard.date === today) {
+      const cardMessage: Message = {
+        id: `card-${Date.now()}`,
+        text: storedCard.interpretation,
+        sender: Sender.AI,
+        card: { name: storedCard.cardName },
+      };
+      setMessages(prev => [...prev, cardMessage]);
+      return;
     }
 
     setIsLoading(true);
@@ -133,11 +143,15 @@ const App: React.FC = () => {
     
     // Only cache the interpretation if the API call was successful.
     if (!isErrorResponse) {
-      localStorage.setItem('ria-card-of-the-day', JSON.stringify({
-        date: today,
-        cardName: card.name,
-        interpretation: interpretation,
-      }));
+      try {
+        localStorage.setItem('ria-card-of-the-day', JSON.stringify({
+          date: today,
+          cardName: card.name,
+          interpretation: interpretation,
+        }));
+      } catch (error) {
+        console.warn("Could not write 'ria-card-of-the-day' to localStorage:", error);
+      }
     }
 
     setIsLoading(false);
@@ -171,7 +185,11 @@ const App: React.FC = () => {
         const newCount = subscription.messagesSentToday + 1;
         const newSub = { ...subscription, messagesSentToday: newCount, date: getTodayDateString() };
         setSubscription(newSub);
-        localStorage.setItem('ria-subscription-status', JSON.stringify(newSub));
+        try {
+          localStorage.setItem('ria-subscription-status', JSON.stringify(newSub));
+        } catch (error) {
+          console.warn("Could not update subscription status in localStorage:", error);
+        }
     }
     
     const currentHistory = [...messages, userMessage];
