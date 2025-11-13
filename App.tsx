@@ -17,8 +17,14 @@ declare global {
   }
 }
 
-// A helper to get today's date as a string in YYYY-MM-DD format
-const getTodayDateString = () => new Date().toISOString().split('T')[0];
+// A helper to get today's date as a string in YYYY-MM-DD format, respecting local timezone
+const getTodayDateString = () => {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -124,7 +130,7 @@ const App: React.FC = () => {
     const card = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
     const userPrompt = `Моя карта дня сегодня – «${card.name}». Расскажи, что она значит для меня, в своем стиле.`;
     
-    const interpretation = await getRiaResponse(userPrompt, []);
+    const interpretation = await getRiaResponse(userPrompt, messages);
 
     // Check if the response is one of the known error messages to prevent caching them.
     const isErrorResponse = interpretation.includes('что-то пошло не так') || 
@@ -192,8 +198,8 @@ const App: React.FC = () => {
         }
     }
     
-    const currentHistory = [...messages, userMessage];
-    const aiResponseText = await getRiaResponse(text, currentHistory);
+    // Pass the message history *before* the new user message was added.
+    const aiResponseText = await getRiaResponse(text, messages);
 
     const aiMessage: Message = {
       id: `ai-${Date.now()}`,
