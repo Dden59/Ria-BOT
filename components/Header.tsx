@@ -1,12 +1,14 @@
+
 import React from 'react';
 import { Avatar } from './Avatar';
 import { ReferralButton } from './ReferralButton';
 
 interface HeaderProps {
   onDrawCard: () => void;
+  onToggleDebug: () => void;
 }
 
-export const Header: React.FC<HeaderProps> = ({ onDrawCard }) => {
+export const Header: React.FC<HeaderProps> = ({ onDrawCard, onToggleDebug }) => {
   return (
     <header className="bg-rose-100/80 dark:bg-gray-800/80 backdrop-blur-sm shadow-md p-4 flex items-center justify-between border-b border-rose-200 dark:border-gray-700 sticky top-0 z-10">
       <div className="flex items-center space-x-3">
@@ -28,6 +30,15 @@ export const Header: React.FC<HeaderProps> = ({ onDrawCard }) => {
            <span className="hidden sm:inline font-medium text-sm">Карта дня</span>
         </button>
         <ReferralButton />
+        <button
+          onClick={onToggleDebug}
+          className="flex-shrink-0 flex items-center justify-center bg-rose-200/50 dark:bg-gray-700/50 text-gray-700 dark:text-gray-200 p-2.5 rounded-lg hover:bg-rose-200 dark:hover:bg-gray-700 transition-colors duration-200 border border-transparent"
+          aria-label="Показать отладочную информацию"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </button>
       </div>
     </header>
   );

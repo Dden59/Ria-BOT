@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { ChatWindow } from './components/ChatWindow';
 import { MessageInput } from './components/MessageInput';
 import { SubscriptionModal } from './components/SubscriptionModal';
+import { DebugInfo } from './components/DebugInfo';
 import { getRiaResponse } from './services/geminiService';
 import { Message, Sender, SubscriptionStatus, SubscriptionTier } from './types';
 import { FREE_TIER_MESSAGE_LIMIT, TAROT_CARDS } from './constants';
@@ -34,9 +35,11 @@ const App: React.FC = () => {
     messagesSentToday: 0,
   });
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
+  const [lastError, setLastError] = useState<string | null>(null);
   const mainAppRef = useRef<HTMLDivElement>(null);
 
-  // Effect for initializing app and Telegram integration
+  // Effect for initializing app and handling viewport/theme integration
   useEffect(() => {
     setMessages([
       {
@@ -46,26 +49,42 @@ const App: React.FC = () => {
       },
     ]);
 
-    if (window.Telegram && window.Telegram.WebApp) {
-      const tg = window.Telegram.WebApp;
+    const tg = window.Telegram?.WebApp;
+
+    const applyTheme = () => {
+      document.documentElement.classList.toggle('dark', tg?.colorScheme === 'dark');
+    };
+
+    const updateViewportHeight = () => {
+      if (mainAppRef.current) {
+        // Use Telegram's stable height if available, otherwise fall back to window's innerHeight
+        // This solves the 100vh issue on mobile browsers.
+        const vh = tg?.viewportStableHeight || window.innerHeight;
+        mainAppRef.current.style.height = `${vh}px`;
+      }
+    };
+
+    if (tg) {
       tg.ready();
       tg.expand();
-
-      const applyTheme = () => {
-        document.documentElement.classList.toggle('dark', tg.colorScheme === 'dark');
-      };
-      
-      const setViewportHeight = () => {
-        if (mainAppRef.current) {
-          mainAppRef.current.style.height = `${tg.viewportStableHeight}px`;
-        }
-      };
-
       tg.onEvent('themeChanged', applyTheme);
-      tg.onEvent('viewportChanged', setViewportHeight);
-      
-      applyTheme();
-      setViewportHeight();
+      tg.onEvent('viewportChanged', updateViewportHeight);
+    }
+    
+    // Listen to window resize for non-Telegram environments
+    window.addEventListener('resize', updateViewportHeight);
+    
+    // Initial setup
+    applyTheme();
+    updateViewportHeight();
+    
+    // Cleanup listeners on component unmount
+    return () => {
+        if (tg) {
+            tg.offEvent('themeChanged', applyTheme);
+            tg.offEvent('viewportChanged', updateViewportHeight);
+        }
+        window.removeEventListener('resize', updateViewportHeight);
     }
   }, []);
   
@@ -129,37 +148,33 @@ const App: React.FC = () => {
 
     const card = TAROT_CARDS[Math.floor(Math.random() * TAROT_CARDS.length)];
     
-    // Create an isolated, single-message history for the card request to ensure reliability.
     const cardRequestContext: Message[] = [{
       id: 'temp-card-prompt',
       text: `Моя карта дня сегодня – «${card.name}». Расскажи, что она значит для меня, в своем стиле.`,
       sender: Sender.USER
     }];
     
-    const interpretation = await getRiaResponse(cardRequestContext);
+    const response = await getRiaResponse(cardRequestContext);
 
-    // Check if the response is one of the known error messages to prevent caching them.
-    const isErrorResponse = interpretation.includes('что-то пошло не так') || 
-                            interpretation.includes('технические неполадки') ||
-                            interpretation.includes('ключ, что ты добавил') ||
-                            interpretation.includes('сбилось в нашем диалоге');
+    if (response.rawError) {
+      setLastError(response.rawError);
+    }
 
     const cardMessage: Message = {
       id: `card-${Date.now()}`,
-      text: interpretation,
+      text: response.text,
       sender: Sender.AI,
       card: { name: card.name },
     };
     
     setMessages(prev => [...prev, cardMessage]);
     
-    // Only cache the interpretation if the API call was successful.
-    if (!isErrorResponse) {
+    if (!response.rawError) {
       try {
         localStorage.setItem('ria-card-of-the-day', JSON.stringify({
           date: today,
           cardName: card.name,
-          interpretation: interpretation,
+          interpretation: response.text,
         }));
       } catch (error) {
         console.warn("Could not write 'ria-card-of-the-day' to localStorage:", error);
@@ -182,10 +197,8 @@ const App: React.FC = () => {
       sender: Sender.USER,
     };
     
-    // Create the new, full history in a local variable to avoid stale state issues.
     const updatedMessages = [...messages, userMessage];
 
-    // Update the UI immediately with the user's message.
     setMessages(updatedMessages);
     setIsLoading(true);
 
@@ -208,16 +221,18 @@ const App: React.FC = () => {
         }
     }
     
-    // Pass the complete, up-to-date history to the service.
-    const aiResponseText = await getRiaResponse(updatedMessages);
+    const response = await getRiaResponse(updatedMessages);
+
+    if (response.rawError) {
+      setLastError(response.rawError);
+    }
 
     const aiMessage: Message = {
       id: `ai-${Date.now()}`,
-      text: aiResponseText,
+      text: response.text,
       sender: Sender.AI,
     };
 
-    // Update the UI with the AI's response.
     setMessages((prevMessages) => [...prevMessages, aiMessage]);
     setIsLoading(false);
   };
@@ -245,8 +260,8 @@ const App: React.FC = () => {
   };
 
   return (
-    <div ref={mainAppRef} className="h-screen w-screen bg-rose-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col font-sans overflow-hidden">
-      <Header onDrawCard={handleDrawCard} />
+    <div ref={mainAppRef} className="w-screen bg-rose-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200 flex flex-col font-sans overflow-hidden">
+      <Header onDrawCard={handleDrawCard} onToggleDebug={() => setShowDebug(true)} />
       <main className="flex-1 flex flex-col overflow-hidden">
         <ChatWindow messages={messages} isLoading={isLoading} />
       </main>
@@ -255,6 +270,11 @@ const App: React.FC = () => {
         isOpen={showSubscriptionModal} 
         onClose={() => setShowSubscriptionModal(false)}
         onSubscribe={handleSubscribe}
+      />
+      <DebugInfo 
+        isOpen={showDebug}
+        lastError={lastError}
+        onClose={() => setShowDebug(false)}
       />
     </div>
   );
